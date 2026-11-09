@@ -3,6 +3,7 @@ import { generateRandomSchedule, type RandomScheduleOptions, type Silence } from
 import { nextBoundary, shiftSilences, silenceAt } from '../core/silence-lookup';
 import { clipSilences } from '../core/silence-cursor';
 import { VideoClock } from '../core/video-clock';
+import { outputDelay } from './audio-context';
 import type { BeatLevel, ClickSound } from './click-sounds';
 import { Metronome } from './metronome';
 import { startTicker, type Ticker } from './scheduler';
@@ -34,6 +35,24 @@ interface Practice {
   heard: Set<Silence>;
   maxBeat: number;
   playedSeconds: number;
+}
+
+/** Output delays beyond this are treated as a bogus timestamp rather than real latency. */
+const MAX_OUTPUT_DELAY_SECONDS = 0.5;
+
+/**
+ * Returns a function mapping wall-clock time (seconds, `at` = now) to the audio-clock time
+ * whose sound leaves the speakers at that moment, so clicks line up with what is heard.
+ */
+export function outputClock(ctx: AudioContext, at: number): (wall: number) => number {
+  const stamp = ctx.getOutputTimestamp?.();
+  if (stamp?.performanceTime && stamp.contextTime !== undefined) {
+    const heardNow = stamp.contextTime + (at - stamp.performanceTime / 1000);
+    const delay = ctx.currentTime - heardNow;
+    if (delay >= 0 && delay <= MAX_OUTPUT_DELAY_SECONDS) return (wall) => heardNow + (wall - at);
+  }
+  const heardNow = ctx.currentTime - outputDelay(ctx);
+  return (wall) => heardNow + (wall - at);
 }
 
 /** Wall-clock seconds on the same timeline as event.timeStamp. */
@@ -245,7 +264,9 @@ export class YouTubeEngine {
   private scheduleClicks(at: number, t: number | null): void {
     const c = this.click;
     if (!c) return;
-    if (t === null) {
+    const { ctx, beatLevels } = c.overlay;
+    // A suspended context's clock is frozen: clicks booked now would all burst out together once it resumes.
+    if (t === null || ctx.state !== 'running') {
       c.lastBeat = null;
       return;
     }
@@ -253,15 +274,11 @@ export class YouTubeEngine {
       c.epoch = this.clock.epoch;
       c.lastBeat = null;
     }
-    const { ctx, beatLevels } = c.overlay;
-    const stamp = ctx.getOutputTimestamp?.();
-    // Audio-clock time at which a sound will leave the speakers at wall time `wall`.
-    const toCtx = (wall: number) =>
-      stamp?.performanceTime && stamp.contextTime !== undefined
-        ? stamp.contextTime + (wall - stamp.performanceTime / 1000)
-        : ctx.currentTime + (wall - at);
+    const toCtx = outputClock(ctx, at);
+    // Sounds booked now are heard this much later, so look that much further ahead.
+    const delay = Math.max(0, ctx.currentTime - toCtx(at));
     let n = c.lastBeat === null ? Math.ceil(timeToBeats(this.grid, t)) : c.lastBeat + 1;
-    for (; beatToTime(this.grid, n) <= t + CLICK_LOOKAHEAD_SECONDS; n++) {
+    for (; beatToTime(this.grid, n) <= t + delay + CLICK_LOOKAHEAD_SECONDS; n++) {
       c.lastBeat = n;
       if (n < 0) continue;
       if (this.practice && silenceAt(this.practice.silences, n)) continue;
