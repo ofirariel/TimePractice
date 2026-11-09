@@ -1,37 +1,8 @@
 import { describe, expect, it } from 'vitest';
-import { createRng } from '../src/core/rng';
 import { detectBeat, detectBeatFromPcm, onsetsFromFrames, type OnsetTrack } from '../src/core/beat-detect';
+import { DRUM_RATE, drumTrack } from './drum-track';
 
-const RATE = 22050;
-
-/** A drum-machine bar: kick on 1 (and 3 in 4/4), snare on the backbeat, quiet hats in between. */
-export function drumTrack(bpm: number, offset: number, beatsPerBar: number, seconds: number): Float32Array {
-  const out = new Float32Array(Math.floor(seconds * RATE));
-  const rng = createRng(1234);
-  const beat = 60 / bpm;
-  const add = (time: number, freq: number, amp: number, decay: number, noise: boolean) => {
-    const start = Math.floor(time * RATE);
-    const length = Math.floor(decay * RATE);
-    for (let i = 0; i < length && start + i < out.length; i++) {
-      const t = i / RATE;
-      const env = Math.exp(-t / (decay * 0.28));
-      const tone = noise ? rng() * 2 - 1 : Math.sin(2 * Math.PI * freq * t);
-      out[start + i] += amp * env * tone;
-    }
-  };
-  for (let i = 0; ; i++) {
-    const time = offset + i * beat;
-    if (time >= seconds - 0.1) break;
-    const place = ((i % beatsPerBar) + beatsPerBar) % beatsPerBar;
-    const kick = place === 0 || (beatsPerBar === 4 && place === 2);
-    const snare = beatsPerBar === 4 && (place === 1 || place === 3);
-    if (kick) add(time, 70, 1, 0.1, false);
-    else if (snare) add(time, 2200, 0.55, 0.07, true);
-    else add(time, 160, 0.4, 0.06, false);
-    add(time + beat / 2, 3500, 0.05, 0.015, true);
-  }
-  return out;
-}
+const RATE = DRUM_RATE;
 
 function wrap(value: number, period: number): number {
   const r = value % period;
@@ -49,6 +20,17 @@ describe('beat detection from audio', () => {
       expect(found.confidence).toBeGreaterThan(0.1);
     });
   }
+
+  it('hears a 12 second listen, the length captured from a video', () => {
+    const bpm = 100;
+    const offset = 0.37;
+    const found = detectBeatFromPcm(drumTrack(bpm, offset, 4, 12), RATE, 4);
+    expect(Math.abs(found.bpm - bpm)).toBeLessThanOrEqual(0.6);
+    const bar = (60 / bpm) * 4;
+    const error = Math.min(wrap(found.offset - offset, bar), wrap(offset - found.offset, bar));
+    expect(error).toBeLessThan(0.03);
+    expect(found.confidence).toBeGreaterThan(0);
+  });
 
   it('stays on the quarter note when eighth-note hats are present', () => {
     const found = detectBeatFromPcm(drumTrack(90, 0.2, 4, 30), RATE, 4);

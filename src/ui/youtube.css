@@ -90,6 +90,40 @@
   font-size: 0.9rem;
 }
 
+.listen-block {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-top: 4px;
+}
+
+.listen-note {
+  margin-top: 0;
+}
+
+.listen-block .status-note {
+  margin: 0;
+}
+
+.listen-button {
+  min-height: 48px;
+  border: 0;
+  border-radius: 10px;
+  background: var(--accent);
+  color: var(--accent-ink);
+  font-weight: 700;
+}
+
+.listen-button.stop {
+  background: transparent;
+  color: var(--text);
+  border: 1px solid var(--line);
+}
+
+.listen-button:disabled {
+  opacity: 0.55;
+}
+
 .tap-area {
   display: flex;
   flex-direction: column;
