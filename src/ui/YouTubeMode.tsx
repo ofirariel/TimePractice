@@ -59,7 +59,8 @@ function statusMessage(status: VideoStatus, practicing: boolean, started: boolea
 
 export function YouTubeMode({ top }: { top?: ComponentChildren }) {
   const [settings, setSettings] = useState<Settings>(loadSettings);
-  const [yt, setYt] = useState<YouTubeSettings>(loadYouTubeSettings);
+  // The click always starts off: switching it on is the tap that browsers require before sound can play.
+  const [yt, setYt] = useState<YouTubeSettings>(() => ({ ...loadYouTubeSettings(), clickOn: false }));
   const [urlText, setUrlText] = useState(yt.lastVideoId ? `https://youtu.be/${yt.lastVideoId}` : '');
   const [videoId, setVideoId] = useState<string | null>(yt.lastVideoId || null);
   const [error, setError] = useState<string | null>(null);
@@ -150,6 +151,17 @@ export function YouTubeMode({ top }: { top?: ComponentChildren }) {
       yt.clickOn ? { ctx: getAudioContext(), sound: settings.sound, beatLevels: settings.beatLevels, volume: settings.volume } : null,
     );
   }, [ready, yt.clickOn, settings.sound, settings.beatLevels, settings.volume]);
+
+  // Safari can suspend audio at any time; any tap on the page lets it resume.
+  useEffect(() => {
+    if (!yt.clickOn) return;
+    const resume = () => void unlockAudio().catch(() => {});
+    const events = ['pointerdown', 'touchend', 'keydown'] as const;
+    for (const e of events) document.addEventListener(e, resume, true);
+    return () => {
+      for (const e of events) document.removeEventListener(e, resume, true);
+    };
+  }, [yt.clickOn]);
 
   // Refresh the counter and status every frame.
   useEffect(() => {

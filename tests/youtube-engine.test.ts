@@ -171,3 +171,114 @@ describe('YouTube engine', () => {
     engine.destroy();
   });
 });
+
+/** Just enough of an AudioContext for the click overlay; records every click booked. */
+class FakeAudioContext {
+  state: AudioContextState = 'running';
+  sampleRate = 48000;
+  destination = {};
+  baseLatency = 0.01;
+  outputLatency = 0;
+  /** How far behind currentTime the speakers are, as reported by getOutputTimestamp(). */
+  speakerDelay = 0.03;
+  bogusStamp = false;
+  private frozenAt = 0;
+  private startedAt = performance.now() / 1000;
+  booked: { when: number; now: number }[] = [];
+
+  get currentTime() {
+    return this.state === 'running' ? performance.now() / 1000 - this.startedAt : this.frozenAt;
+  }
+  suspend() {
+    this.frozenAt = this.currentTime;
+    this.state = 'suspended';
+  }
+  resume() {
+    this.startedAt = performance.now() / 1000 - this.frozenAt;
+    this.state = 'running';
+  }
+  getOutputTimestamp() {
+    if (this.state !== 'running') return { contextTime: 0, performanceTime: 0 };
+    if (this.bogusStamp) return { contextTime: this.currentTime + 40, performanceTime: performance.now() };
+    return { contextTime: this.currentTime - this.speakerDelay, performanceTime: performance.now() };
+  }
+  createGain() {
+    return { gain: { value: 1, setTargetAtTime() {} }, connect: () => ({}), disconnect() {} };
+  }
+  createBuffer(_channels: number, length: number) {
+    return { length, copyToChannel() {} };
+  }
+  createBufferSource() {
+    return { buffer: null, connect() {}, start: (when: number) => this.booked.push({ when, now: this.currentTime }) };
+  }
+}
+
+describe('YouTube click overlay', () => {
+  beforeEach(() => {
+    vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout', 'setInterval', 'clearInterval', 'performance'] });
+  });
+  afterEach(() => {
+    vi.useRealTimers();
+  });
+
+  function setup(ctx: FakeAudioContext) {
+    const player = new FakePlayer();
+    const engine = new YouTubeEngine(player, grid);
+    engine.setClickOverlay({ ctx: ctx as unknown as AudioContext, sound: 'classic', beatLevels: ['accent', 'normal', 'normal', 'normal'], volume: 1 });
+    player.playVideo();
+    return { player, engine };
+  }
+
+  /** Every beat between 1 s and 9 s of video should get exactly one click, booked ahead of the audio clock. */
+  function expectOneClickPerBeat(ctx: FakeAudioContext) {
+    const future = ctx.booked.filter((b) => b.when >= b.now);
+    expect(future.length).toBe(ctx.booked.length);
+    // Beats at 0.37 + 0.5 k: 16 beats fall in a 8 s window.
+    const inWindow = ctx.booked.filter((b) => b.when > 1 && b.when <= 9);
+    expect(inWindow.length).toBeGreaterThanOrEqual(15);
+    expect(inWindow.length).toBeLessThanOrEqual(17);
+    const gaps = inWindow.slice(1).map((b, i) => b.when - inWindow[i].when);
+    gaps.forEach((g) => expect(Math.abs(g - 0.5)).toBeLessThan(0.01));
+  }
+
+  it('books one click per beat ahead of the audio clock', () => {
+    const ctx = new FakeAudioContext();
+    const { engine } = setup(ctx);
+    run(10_000);
+    expectOneClickPerBeat(ctx);
+    engine.destroy();
+  });
+
+  it('still clicks when the speakers lag far behind (Android, Bluetooth)', () => {
+    const ctx = new FakeAudioContext();
+    ctx.speakerDelay = 0.3;
+    const { engine } = setup(ctx);
+    run(10_000);
+    expectOneClickPerBeat(ctx);
+    engine.destroy();
+  });
+
+  it('falls back to a simple mapping when the browser reports a nonsense output timestamp', () => {
+    const ctx = new FakeAudioContext();
+    ctx.bogusStamp = true;
+    const { engine } = setup(ctx);
+    run(10_000);
+    expectOneClickPerBeat(ctx);
+    engine.destroy();
+  });
+
+  it('books nothing while audio is suspended, then clicks normally once resumed', () => {
+    const ctx = new FakeAudioContext();
+    ctx.suspend();
+    const { engine } = setup(ctx);
+    run(3000);
+    expect(ctx.booked).toEqual([]);
+    ctx.resume();
+    run(10_000);
+    expect(ctx.booked.length).toBeGreaterThan(15);
+    expect(ctx.booked.every((b) => b.when >= b.now)).toBe(true);
+    // No burst of stacked-up clicks: they stay half a second apart.
+    ctx.booked.slice(1).forEach((b, i) => expect(b.when - ctx.booked[i].when).toBeGreaterThan(0.49));
+    engine.destroy();
+  });
+});
