@@ -1,5 +1,6 @@
 import { beatToTime, timeToBeats, timeToPosition, type Grid, type Position } from '../core/grid';
-import { RandomSchedule, type RandomScheduleOptions, type Silence, type SilenceUnit } from '../core/schedule-random';
+import { createSchedule, scheduleSeed, type ScheduleOptions } from '../core/schedule';
+import type { Silence, SilenceUnit } from '../core/schedule-random';
 import { clipSilences, SilenceCursor } from '../core/silence-cursor';
 import { outputDelay } from './audio-context';
 import type { BeatLevel, ClickSound } from './click-sounds';
@@ -18,7 +19,7 @@ export interface SessionConfig {
   sound: ClickSound;
   volume: number;
   /** null = metronome only, no silences. */
-  schedule: RandomScheduleOptions | null;
+  schedule: ScheduleOptions | null;
 }
 
 export interface SessionSummary {
@@ -52,7 +53,7 @@ export class PracticeSession {
     this.gate = new MuteGate(ctx, ctx.destination, config.volume);
     this.metronome = new Metronome(ctx, this.gate.input, config.sound);
     this.beatLevels = config.beatLevels;
-    this.cursor = new SilenceCursor(config.schedule ? new RandomSchedule(config.schedule) : null);
+    this.cursor = new SilenceCursor(config.schedule ? createSchedule(config.schedule) : null);
     this.grid = { bpm: config.bpm, beatsPerBar: config.beatsPerBar, offset: ctx.currentTime + START_DELAY_SECONDS };
     this.ticker = startTicker(() => this.tick());
     this.tick();
@@ -112,7 +113,7 @@ export class PracticeSession {
       bpm: this.grid.bpm,
       beatsPerBar: this.grid.beatsPerBar,
       unit: s?.unit ?? null,
-      seed: s ? String(s.seed) : null,
+      seed: scheduleSeed(s),
       durationSeconds: this.elapsedSeconds(),
       totalBeats,
       silences: clipSilences(this.cursor.started, totalBeats),

@@ -1,6 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { beatToTime, type Grid } from '../src/core/grid';
-import { generateRandomSchedule, type RandomScheduleOptions } from '../src/core/schedule-random';
+import { generateSchedule, type ScheduleOptions } from '../src/core/schedule';
+import { generateRandomSchedule } from '../src/core/schedule-random';
 import { PlayerState, type YTPlayer } from '../src/sources/youtube-player';
 import { YouTubeEngine } from '../src/sources/youtube-session';
 
@@ -63,8 +64,8 @@ class FakePlayer implements YTPlayer {
 }
 
 const grid: Grid = { bpm: 120, beatsPerBar: 4, offset: 0.37 };
-const options: RandomScheduleOptions = {
-  unit: 'bars', length: { min: 1, max: 2 }, gap: { min: 1, max: 3 }, chance: 1, grace: 2, bpm: 120, beatsPerBar: 4, seed: 'yt',
+const options: ScheduleOptions & { mode: 'random' } = {
+  mode: 'random', unit: 'bars', length: { min: 1, max: 2 }, gap: { min: 1, max: 3 }, chance: 1, grace: 2, bpm: 120, beatsPerBar: 4, seed: 'yt',
 };
 
 function run(ms: number) {
@@ -107,6 +108,28 @@ describe('YouTube engine', () => {
     expect(summary.offsetSeconds).toBe(0.37);
     expect(summary.durationSeconds).toBeGreaterThan(59);
     expect(player.muted).toBe(false);
+  });
+
+  it('fixed mode mutes the video for the last 2 of every 4 bars', () => {
+    const player = new FakePlayer();
+    const engine = new YouTubeEngine(player, grid);
+    engine.calibration = 0;
+    const fixed: ScheduleOptions = { mode: 'fixed', unit: 'bars', silence: 2, every: 4, grace: 0, bpm: 120, beatsPerBar: 4 };
+    engine.startPractice(fixed);
+    run(40_000);
+    const summary = engine.stopPractice()!;
+    engine.destroy();
+
+    const expected = generateSchedule(fixed, 1000).filter((s) => beatToTime(grid, s.endBeat) < 39);
+    // Bars 3-4, 7-8, 11-12, ... : 8 s cycles at 120 BPM in 4/4.
+    expect(expected.slice(0, 2)).toEqual([{ startBeat: 8, endBeat: 16 }, { startBeat: 24, endBeat: 32 }]);
+    const mutes = player.events.filter((e) => e.muted);
+    const unmutes = player.events.filter((e) => !e.muted);
+    expected.forEach((s, i) => {
+      expect(Math.abs(mutes[i].video - beatToTime(grid, s.startBeat))).toBeLessThan(0.006);
+      expect(Math.abs(unmutes[i].video - beatToTime(grid, s.endBeat))).toBeLessThan(0.006);
+    });
+    expect(summary.seed).toBeNull();
   });
 
   it('puts silences on hold while paused and resumes them in place', () => {

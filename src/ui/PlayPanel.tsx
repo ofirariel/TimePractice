@@ -1,5 +1,8 @@
 import type { Position } from '../core/grid';
 import { formatClock } from '../core/format';
+import type { SilenceMode } from '../state/settings';
+
+const SILENCE_STATUS: Record<SilenceMode, string> = { fixed: 'Fixed silences on', random: 'Random silences on', off: 'Silences off' };
 
 interface Props {
   running: boolean;
@@ -8,7 +11,7 @@ interface Props {
   beatsPerBar: number;
   beatUnit: number;
   bpm: number;
-  silencesOn: boolean;
+  silenceMode: SilenceMode;
   onToggle: () => void;
   /** Show the bar/beat even when not running (e.g. while a video plays during alignment). */
   alwaysShowPosition?: boolean;
@@ -20,9 +23,9 @@ interface Props {
 }
 
 export function PlayPanel(props: Props) {
-  const { running, position, elapsed, beatsPerBar, beatUnit, bpm, silencesOn, onToggle } = props;
+  const { running, position, elapsed, beatsPerBar, beatUnit, bpm, silenceMode, onToggle } = props;
   const showing = (running || props.alwaysShowPosition) && position;
-  const status = props.status ?? (running ? formatClock(elapsed) : silencesOn ? 'Random silences on' : 'Silences off');
+  const status = props.status ?? (running ? formatClock(elapsed) : SILENCE_STATUS[silenceMode]);
   return (
     <section class="card play">
       <div class="counter" aria-live="off">

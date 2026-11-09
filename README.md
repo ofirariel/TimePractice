@@ -7,12 +7,15 @@ A free practice tool for keeping time. A metronome plays, then goes silent at ra
 ## How to use it
 
 1. Set your **tempo** and **time signature**. Under **Beats**, tap each beat to make it an accent, normal, soft or silent click (by default the 1 is accented). Pick a click **Sound**: classic, woodblock, cowbell or soft beep. Beats, sound and volume can be changed while playing.
-2. Under **Random silences**, choose whether to measure in **bars** or **seconds**, then set:
-   - **Silence length** – how long the click goes quiet. *Fixed* always uses the same length; *Random range* picks a new length each time.
-   - **Gap between silences** – how long you hear the click in between, fixed or a range.
-   - **Warm-up** – nothing is muted at the start, so you can lock in first.
-   - **Surprise** – after each gap, the chance per bar that the next silence starts. At 100% it starts right away; lower values make silences less predictable.
-   - **Pattern seed** (optional) – type any word or number to get exactly the same pattern every time. Leave it empty for a new pattern each session.
+2. Under **Silences**, pick a mode and whether to measure in **bars** or **seconds**:
+   - **Fixed** (the default) – the same pattern over and over: *silent for N every M*. For example "silent for 2 every 4 bars" plays two bars, then two bars of silence, and repeats.
+   - **Random** – silences of varying length at unpredictable places:
+     - **Silence length** – how long the sound goes quiet. *Exact* always uses the same length; *Range* picks a new length each time.
+     - **Gap between silences** – how long you hear the sound in between, exact or a range.
+     - **Surprise** – after each gap, the chance per bar that the next silence starts. At 100% it starts right away; lower values make silences less predictable.
+     - **Pattern seed** (optional) – type any word or number to get exactly the same pattern every time. Leave it empty for a new pattern each session.
+   - **Off** – no silences.
+   - In Fixed and Random, **Warm-up** keeps the start unmuted, so you can lock in first.
 3. Press **Start**. The big counter shows the bar and beat. Silences are not shown on screen – you only hear them.
 4. Press **Stop**. The **Last session** panel shows where the silences fell. To practise the same pattern again, press **Repeat this pattern**.
 
@@ -37,8 +40,8 @@ The tempo and alignment are saved for each video, so next time just load it and 
 
 ## Roadmap
 
-1. Metronome with random silences (done)
-2. Fixed silences ("mute bars 5–6 and 13–16"), muted light, reveal-the-schedule option
+1. Metronome with random and fixed silences (done)
+2. Custom silence regions ("mute bars 5–6 and 13–16"), muted light, reveal-the-schedule option
 3. YouTube backing tracks (done)
 4. Audio files from your device, with automatic beat alignment
 5. Install as an app, offline use, polish

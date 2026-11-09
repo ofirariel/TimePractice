@@ -88,7 +88,7 @@ export function App({ top }: { top?: ComponentChildren }) {
         beatLevels: settings.beatLevels,
         sound: settings.sound,
         volume: settings.volume,
-        schedule: settings.silence.enabled ? toScheduleOptions(settings, seed) : null,
+        schedule: toScheduleOptions(settings, seed),
       });
       setSummary(null);
       setPosition(null);
@@ -121,7 +121,7 @@ export function App({ top }: { top?: ComponentChildren }) {
         bpm={settings.bpm}
         beatsPerBar={settings.beatsPerBar}
         beatUnit={settings.beatUnit}
-        silencesOn={settings.silence.enabled}
+        silenceMode={settings.silence.mode}
         onToggle={running ? stop : start}
       />
       {error && <p class="error">{error}</p>}

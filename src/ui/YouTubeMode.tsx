@@ -242,9 +242,8 @@ export function YouTubeMode({ top }: { top?: ComponentChildren }) {
     if (!e) return;
     void unlockAudio().catch(() => {});
     const seed = settings.silence.seed.trim() || makeSeed();
-    const options = settings.silence.enabled
-      ? { ...toScheduleOptions(settings, seed), bpm: grid.bpm, beatsPerBar: grid.beatsPerBar }
-      : null;
+    const base = toScheduleOptions(settings, seed);
+    const options = base && { ...base, bpm: grid.bpm, beatsPerBar: grid.beatsPerBar };
     e.startPractice(options);
     setSummary(null);
     setElapsed(0);
@@ -323,7 +322,7 @@ export function YouTubeMode({ top }: { top?: ComponentChildren }) {
             bpm={grid.bpm}
             beatsPerBar={grid.beatsPerBar}
             beatUnit={grid.beatUnit}
-            silencesOn={settings.silence.enabled}
+            silenceMode={settings.silence.mode}
             alwaysShowPosition
             startLabel="Start practice"
             stopLabel="Stop"
