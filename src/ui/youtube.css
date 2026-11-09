@@ -6,7 +6,8 @@
 .source-picker .segmented button {
   flex: 1;
   min-height: 46px;
-  font-size: 1rem;
+  padding: 0 6px;
+  font-size: 0.95rem;
 }
 
 .url-row {
