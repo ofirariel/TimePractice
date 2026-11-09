@@ -29,6 +29,10 @@ export interface SessionSummary {
   durationSeconds: number;
   /** Beats heard (exclusive end of the session in beat indices). */
   totalBeats: number;
+  /** First beat of the session (default 0). A YouTube session starts wherever the video was. */
+  startBeat?: number;
+  /** Source time (seconds) of beat 0, e.g. the video's first downbeat (default 0). */
+  offsetSeconds?: number;
   silences: Silence[];
 }
 
