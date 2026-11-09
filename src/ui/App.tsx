@@ -2,6 +2,8 @@ import { useEffect, useRef, useState } from 'preact/hooks';
 import type { Position } from '../core/grid';
 import { makeSeed } from '../core/rng';
 import { unlockAudio } from '../sources/audio-context';
+import type { BeatLevel, ClickSound } from '../sources/click-sounds';
+import { previewClick } from '../sources/metronome';
 import { PracticeSession, type SessionSummary } from '../sources/session';
 import { loadSettings, saveSettings, toScheduleOptions, type Settings } from '../state/settings';
 import { MetronomeSettings } from './MetronomeSettings';
@@ -65,6 +67,12 @@ export function App() {
   const update = (patch: Partial<Settings>) => {
     setSettings((s) => ({ ...s, ...patch }));
     if (patch.volume !== undefined) session.current?.setVolume(patch.volume);
+    if (patch.sound !== undefined) session.current?.setClickSound(patch.sound);
+    if (patch.beatLevels !== undefined) session.current?.setBeatLevels(patch.beatLevels);
+  };
+  const preview = (sound: ClickSound, level: BeatLevel) => {
+    if (running) return;
+    unlockAudio().then((ctx) => previewClick(ctx, sound, level, settings.volume), () => {});
   };
   const updateSilence = (patch: Partial<Settings['silence']>) => setSettings((s) => ({ ...s, silence: { ...s.silence, ...patch } }));
 
@@ -76,7 +84,8 @@ export function App() {
       session.current = new PracticeSession(ctx, {
         bpm: settings.bpm,
         beatsPerBar: settings.beatsPerBar,
-        accent: settings.accent,
+        beatLevels: settings.beatLevels,
+        sound: settings.sound,
         volume: settings.volume,
         schedule: settings.silence.enabled ? toScheduleOptions(settings, seed) : null,
       });
@@ -114,7 +123,7 @@ export function App() {
         onToggle={running ? stop : start}
       />
       {error && <p class="error">{error}</p>}
-      {running && <p class="locked-note">Stop to change tempo or silence settings. Volume works any time.</p>}
+      {running && <p class="locked-note">Stop to change tempo, time signature or silences. Beats, sound and volume work any time.</p>}
 
       {summary && !running && (
         <SessionTimeline
@@ -124,7 +133,7 @@ export function App() {
         />
       )}
 
-      <MetronomeSettings settings={settings} update={update} locked={running} />
+      <MetronomeSettings settings={settings} update={update} onPreview={preview} locked={running} />
       <SilenceSettings silence={settings.silence} update={updateSilence} locked={running} />
 
       <footer class="app-footer">

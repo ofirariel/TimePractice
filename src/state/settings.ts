@@ -1,4 +1,5 @@
 import type { Range, RandomScheduleOptions, SilenceUnit } from '../core/schedule-random';
+import { BEAT_LEVEL_ORDER, CLICK_SOUNDS, type BeatLevel, type ClickSound } from '../sources/click-sounds';
 
 /** Values kept separately per unit, so switching bars <-> seconds doesn't turn "2 bars" into "2 seconds". */
 export interface UnitValues {
@@ -13,7 +14,12 @@ export interface Settings {
   bpm: number;
   beatsPerBar: number;
   beatUnit: number;
-  accent: boolean;
+  /**
+   * Level of every possible beat (index 0 = the "1"), always LIMITS.beatsPerBar.max long,
+   * so a pattern survives switching to a shorter time signature and back.
+   */
+  beatLevels: BeatLevel[];
+  sound: ClickSound;
   /** 0–1 */
   volume: number;
   silence: {
@@ -43,7 +49,8 @@ export const DEFAULT_SETTINGS: Settings = {
   bpm: 100,
   beatsPerBar: 4,
   beatUnit: 4,
-  accent: true,
+  beatLevels: ['accent', ...Array<BeatLevel>(LIMITS.beatsPerBar.max - 1).fill('normal')],
+  sound: 'classic',
   volume: 0.8,
   silence: {
     enabled: true,
@@ -92,6 +99,16 @@ function sanitizeUnit(value: unknown, fallback: UnitValues, unit: SilenceUnit): 
   };
 }
 
+function sanitizeBeatLevels(value: unknown, legacyAccent: unknown): BeatLevel[] {
+  const saved = Array.isArray(value) ? value : [];
+  return DEFAULT_SETTINGS.beatLevels.map((fallback, i) => {
+    if (BEAT_LEVEL_ORDER.includes(saved[i])) return saved[i] as BeatLevel;
+    // Settings saved before per-beat levels existed had a single "accent the 1" switch.
+    if (i === 0 && !Array.isArray(value) && legacyAccent === false) return 'normal';
+    return fallback;
+  });
+}
+
 /** Accepts anything (e.g. old or hand-edited saved data) and returns valid settings. */
 export function sanitizeSettings(raw: unknown): Settings {
   const d = DEFAULT_SETTINGS;
@@ -102,7 +119,8 @@ export function sanitizeSettings(raw: unknown): Settings {
     bpm: Math.round(num(v.bpm, d.bpm, LIMITS.bpm.min, LIMITS.bpm.max) * 10) / 10,
     beatsPerBar: num(v.beatsPerBar, d.beatsPerBar, LIMITS.beatsPerBar.min, LIMITS.beatsPerBar.max, true),
     beatUnit,
-    accent: bool(v.accent, d.accent),
+    beatLevels: sanitizeBeatLevels(v.beatLevels, v.accent),
+    sound: CLICK_SOUNDS.some((c) => c.value === v.sound) ? (v.sound as ClickSound) : d.sound,
     volume: num(v.volume, d.volume, 0, 1),
     silence: {
       enabled: bool(s.enabled, d.silence.enabled),
