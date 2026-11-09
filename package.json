@@ -1,0 +1,31 @@
+{
+  "name": "timepractice",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Practice keeping time: a metronome that goes silent at random so you can check you're still in the pocket when it comes back.",
+  "license": "MIT",
+  "type": "module",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/ofirariel/TimePractice.git"
+  },
+  "homepage": "https://ofirariel.github.io/TimePractice/",
+  "scripts": {
+    "dev": "vite",
+    "build": "tsc --noEmit && vite build",
+    "preview": "vite preview",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run",
+    "test:watch": "vitest"
+  },
+  "dependencies": {
+    "preact": "^11.2.0"
+  },
+  "devDependencies": {
+    "@babel/core": "^7.29.13",
+    "@preact/preset-vite": "^2.10.6",
+    "typescript": "^7.0.2",
+    "vite": "^8.3.6",
+    "vitest": "^5.1.0"
+  }
+}
