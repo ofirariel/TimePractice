@@ -41,6 +41,27 @@ describe('settings', () => {
     expect(s.silence.chance).toBe(1);
   });
 
+  it('defaults to an accent on 1 and normal beats elsewhere, with the classic sound', () => {
+    const s = sanitizeSettings({});
+    expect(s.sound).toBe('classic');
+    expect(s.beatLevels).toHaveLength(15);
+    expect(s.beatLevels[0]).toBe('accent');
+    expect(s.beatLevels.slice(1).every((l) => l === 'normal')).toBe(true);
+  });
+
+  it('keeps a saved beat pattern and click sound, repairing bad entries', () => {
+    const s = sanitizeSettings({ sound: 'cowbell', beatLevels: ['accent', 'soft', 'bogus', 'off'] });
+    expect(s.sound).toBe('cowbell');
+    expect(s.beatLevels.slice(0, 5)).toEqual(['accent', 'soft', 'normal', 'off', 'normal']);
+    expect(s.beatLevels).toHaveLength(15);
+    expect(sanitizeSettings({ sound: 'kazoo' }).sound).toBe('classic');
+  });
+
+  it('carries over the old "accent the 1" switch', () => {
+    expect(sanitizeSettings({ accent: false }).beatLevels[0]).toBe('normal');
+    expect(sanitizeSettings({ accent: true }).beatLevels[0]).toBe('accent');
+  });
+
   it('builds schedule options for the chosen unit, honouring fixed vs ranged', () => {
     const s = sanitizeSettings({
       ...DEFAULT_SETTINGS,

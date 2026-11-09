@@ -5,9 +5,12 @@
   --line: #2e3340;
   --text: #eceef2;
   --muted: #9aa1b0;
-  --accent: #f5b544;
-  --accent-ink: #1b1405;
-  --stop: #ef6461;
+  --accent: #e5484d;
+  --accent-ink: #ffffff;
+  --stop-bg: #e6e8ec;
+  --stop-ink: #15171c;
+  --error: #ff9592;
+  --sound: #3a404e;
   --radius: 14px;
   color-scheme: dark;
   font-family: system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
@@ -179,8 +182,8 @@ fieldset:disabled {
 }
 
 .play-button.stop {
-  background: var(--stop);
-  color: #fff;
+  background: var(--stop-bg);
+  color: var(--stop-ink);
 }
 
 .locked-note,
@@ -191,7 +194,7 @@ fieldset:disabled {
 }
 
 .error {
-  color: var(--stop);
+  color: var(--error);
 }
 
 /* ---- Rows and controls ---- */
@@ -403,6 +406,80 @@ select,
   font-variant-numeric: tabular-nums;
 }
 
+.beat-levels {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.beat-level {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 4px;
+  width: 40px;
+  height: 72px;
+  padding: 6px 0 4px;
+  border-radius: 10px;
+  border: 1px solid var(--line);
+  background: var(--bg);
+}
+
+.beat-level-bar {
+  width: 16px;
+  border-radius: 3px;
+  background: var(--text);
+}
+
+.beat-level.accent .beat-level-bar {
+  height: 40px;
+  background: var(--accent);
+}
+
+.beat-level.normal .beat-level-bar {
+  height: 26px;
+}
+
+.beat-level.soft .beat-level-bar {
+  height: 12px;
+  opacity: 0.6;
+}
+
+.beat-level.off .beat-level-bar {
+  height: 0;
+  border: 1px dashed var(--muted);
+  background: transparent;
+}
+
+.beat-level-num {
+  font-size: 0.8rem;
+  color: var(--muted);
+  font-variant-numeric: tabular-nums;
+}
+
+.sound-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 6px;
+  width: 100%;
+  max-width: 320px;
+}
+
+.sound-grid button {
+  min-height: 44px;
+  border-radius: 10px;
+  border: 1px solid var(--line);
+  background: var(--bg);
+  color: var(--muted);
+}
+
+.sound-grid button.active {
+  color: var(--text);
+  background: var(--card-2);
+  box-shadow: inset 0 0 0 1px var(--accent);
+}
+
 /* ---- Timeline ---- */
 
 .summary-line {
@@ -413,7 +490,7 @@ select,
   position: relative;
   height: 40px;
   margin: 0 0 26px;
-  background: #2b4a3a;
+  background: var(--sound);
   border-radius: 6px;
 }
 
@@ -421,7 +498,7 @@ select,
   position: absolute;
   top: 0;
   bottom: 0;
-  background: var(--stop);
+  background: var(--accent);
   min-width: 2px;
 }
 
@@ -460,11 +537,11 @@ select,
 }
 
 .swatch.sound {
-  background: #2b4a3a;
+  background: var(--sound);
 }
 
 .swatch.silent {
-  background: var(--stop);
+  background: var(--accent);
 }
 
 .muted {

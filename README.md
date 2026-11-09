@@ -6,7 +6,7 @@ A free practice tool for keeping time. A metronome plays, then goes silent at ra
 
 ## How to use it
 
-1. Set your **tempo** and **time signature**. Turn **Accent the 1** on if you want the downbeat to sound different.
+1. Set your **tempo** and **time signature**. Under **Beats**, tap each beat to make it an accent, normal, soft or silent click (by default the 1 is accented). Pick a click **Sound**: classic, woodblock, cowbell or soft beep. Beats, sound and volume can be changed while playing.
 2. Under **Random silences**, choose whether to measure in **bars** or **seconds**, then set:
    - **Silence length** – how long the click goes quiet. *Fixed* always uses the same length; *Random range* picks a new length each time.
    - **Gap between silences** – how long you hear the click in between, fixed or a range.
