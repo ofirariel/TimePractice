@@ -5,10 +5,21 @@ import { makeSeed } from '../core/rng';
 import { nudgeOffset, offsetFromTaps, type TapResult } from '../core/tap-align';
 import { parseVideoId } from '../core/youtube-url';
 import { getAudioContext, unlockAudio } from '../sources/audio-context';
+import {
+  LISTEN_SECONDS,
+  ListenError,
+  detectListen,
+  listenFailureMessage,
+  listenMethod,
+  listenWasSteady,
+  openListenStream,
+  recordListen,
+  stopStream,
+} from '../sources/listen';
 import type { SessionSummary } from '../sources/session';
 import { createPlayer, describePlayerError, type YTPlayer } from '../sources/youtube-player';
 import { wallNow, YouTubeEngine, type VideoStatus } from '../sources/youtube-session';
-import { loadSettings, saveSettings, toScheduleOptions, type Settings } from '../state/settings';
+import { LIMITS, loadSettings, saveSettings, toScheduleOptions, type Settings } from '../state/settings';
 import {
   CALIBRATION,
   loadYouTubeSettings,
@@ -21,7 +32,7 @@ import { useWakeLock } from './App';
 import { PlayPanel } from './PlayPanel';
 import { SessionTimeline } from './SessionTimeline';
 import { SilenceSettings } from './SilenceSettings';
-import { YouTubeAlign } from './YouTubeAlign';
+import { YouTubeAlign, type ListenPhase } from './YouTubeAlign';
 import './youtube.css';
 
 const MAX_TAPS = 12;
@@ -74,16 +85,26 @@ export function YouTubeMode({ top }: { top?: ComponentChildren }) {
   const [taps, setTaps] = useState<number[]>([]);
   const [tapResult, setTapResult] = useState<TapResult | null>(null);
   const [tapHint, setTapHint] = useState<string | null>(null);
+  const [listenPhase, setListenPhase] = useState<ListenPhase>('idle');
+  const [heardSeconds, setHeardSeconds] = useState(0);
+  const [listenMessage, setListenMessage] = useState<string | null>(null);
 
   const host = useRef<HTMLDivElement>(null);
   const player = useRef<YTPlayer | null>(null);
   const engine = useRef<YouTubeEngine | null>(null);
+  const listenAbort = useRef<AbortController | null>(null);
+  const listenWithMic =
+    listenMethod(
+      typeof navigator === 'undefined' ? '' : navigator.userAgent,
+      typeof navigator !== 'undefined' && typeof navigator.mediaDevices?.getDisplayMedia === 'function',
+    ) === 'mic';
 
   const grid: VideoGrid = (videoId && yt.videos[videoId]) || defaultGrid(settings);
 
   useEffect(() => saveSettings(settings), [settings]);
   useEffect(() => saveYouTubeSettings(yt), [yt]);
   useWakeLock(practicing);
+  useEffect(() => () => listenAbort.current?.abort(), [videoId]);
 
   const updateGrid = (patch: Partial<VideoGrid>) => {
     if (!videoId) return;
@@ -147,10 +168,11 @@ export function YouTubeMode({ top }: { top?: ComponentChildren }) {
   useEffect(() => {
     const e = engine.current;
     if (!e) return;
+    const listening = listenPhase !== 'idle';
     e.setClickOverlay(
-      yt.clickOn ? { ctx: getAudioContext(), sound: settings.sound, beatLevels: settings.beatLevels, volume: settings.volume } : null,
+      yt.clickOn && !listening ? { ctx: getAudioContext(), sound: settings.sound, beatLevels: settings.beatLevels, volume: settings.volume } : null,
     );
-  }, [ready, yt.clickOn, settings.sound, settings.beatLevels, settings.volume]);
+  }, [ready, yt.clickOn, listenPhase, settings.sound, settings.beatLevels, settings.volume]);
 
   // Safari can suspend audio at any time; any tap on the page lets it resume.
   useEffect(() => {
@@ -226,6 +248,13 @@ export function YouTubeMode({ top }: { top?: ComponentChildren }) {
     if (r) updateGrid({ offset: r.offset, aligned: true });
   };
 
+  const onScale = (factor: number) => {
+    const bpm = Math.min(LIMITS.bpm.max, Math.max(LIMITS.bpm.min, Math.round(grid.bpm * factor * 10) / 10));
+    setTaps([]);
+    setTapResult(null);
+    updateGrid({ bpm, offset: nudgeOffset(grid.offset, 0, bpm, grid.beatsPerBar) });
+  };
+
   const onNudge = (seconds: number) => {
     setTaps([]);
     setTapResult(null);
@@ -235,6 +264,71 @@ export function YouTubeMode({ top }: { top?: ComponentChildren }) {
   const onClick = (on: boolean) => {
     if (on) void unlockAudio().catch(() => {});
     setYt((s) => ({ ...s, clickOn: on }));
+  };
+
+  const stopListen = () => listenAbort.current?.abort();
+
+  const detect = async () => {
+    if (listenPhase !== 'idle') return;
+    const method = listenWithMic ? 'mic' : 'tab';
+    if (engine.current?.videoTime() == null) {
+      setListenMessage('Press play on the video first, then detect the tempo.');
+      return;
+    }
+    const ctrl = new AbortController();
+    listenAbort.current = ctrl;
+    engine.current?.setClickOverlay(null);
+    setListenMessage(null);
+    setHeardSeconds(0);
+    setListenPhase('asking');
+    let stream: MediaStream | null = null;
+    try {
+      stream = await openListenStream(method, ctrl.signal);
+      if (ctrl.signal.aborted) return;
+      if (engine.current?.videoTime() == null) {
+        setListenMessage('Press play on the video and let it run, then try again.');
+        return;
+      }
+      const ctx = await unlockAudio();
+      if (ctrl.signal.aborted) return;
+      setListenPhase('listening');
+      const beats = grid.beatsPerBar;
+      const recorded = await recordListen({
+        ctx,
+        stream,
+        seconds: LISTEN_SECONDS,
+        signal: ctrl.signal,
+        videoTime: () => engine.current?.videoTime() ?? null,
+        onProgress: (seconds) => setHeardSeconds(seconds),
+      });
+      if (ctrl.signal.aborted) return;
+      if (!listenWasSteady(recorded, LISTEN_SECONDS)) {
+        setListenMessage('The video needs to keep playing the whole time. Press play and try again.');
+        return;
+      }
+      setListenPhase('finding');
+      await new Promise((resolve) => setTimeout(resolve, 30));
+      if (ctrl.signal.aborted) return;
+      const next = detectListen(recorded, beats);
+      if (!next) {
+        setListenMessage('No clear beat in that listen. Turn the volume up, or type the tempo and tap the 1.');
+        return;
+      }
+      setTaps([]);
+      setTapResult(null);
+      setTapHint(null);
+      updateGrid({ bpm: next.bpm, offset: next.offset, aligned: true });
+      setListenMessage(`Heard ${next.bpm} BPM. Turn on the click to check, and use ×2 or shift the 1 if it's off.`);
+    } catch (error) {
+      if (ctrl.signal.aborted) return;
+      const failure = error instanceof ListenError ? error.failure : 'failed';
+      setListenMessage(listenFailureMessage(method, failure));
+    } finally {
+      if (stream) stopStream(stream);
+      if (listenAbort.current === ctrl) listenAbort.current = null;
+      setListenPhase('idle');
+      setHeardSeconds(0);
+    }
   };
 
   const startPractice = () => {
@@ -264,7 +358,7 @@ export function YouTubeMode({ top }: { top?: ComponentChildren }) {
     <main class="app">
       <header class="app-header">
         <h1>TimePractice</h1>
-        <p>Play along with a YouTube track. It goes quiet at random. Keep playing, and check you're still in time when it comes back.</p>
+        <p>Play along with a YouTube track. It goes quiet on the beat. Keep playing, and check you're still in time when it comes back.</p>
       </header>
       {top}
 
@@ -286,17 +380,17 @@ export function YouTubeMode({ top }: { top?: ComponentChildren }) {
             placeholder="Paste a YouTube link"
             aria-label="YouTube link"
             value={urlText}
-            disabled={practicing}
+            disabled={practicing || listenPhase !== 'idle'}
             onInput={(e) => setUrlText(e.currentTarget.value)}
           />
-          <button type="submit" class="load-button" disabled={practicing}>
+          <button type="submit" class="load-button" disabled={practicing || listenPhase !== 'idle'}>
             Load
           </button>
         </form>
         {error && <p class="error">{error}</p>}
         {videoId && <div class="yt-player" ref={host} />}
         {grid.title && videoId && !error && <p class="video-title">{grid.title}</p>}
-        {recent.length > 0 && !practicing && (
+        {recent.length > 0 && !practicing && listenPhase === 'idle' && (
           <div class="recent">
             <span class="muted">Recent:</span>
             {recent.map((v) => (
@@ -308,7 +402,7 @@ export function YouTubeMode({ top }: { top?: ComponentChildren }) {
         )}
         {!videoId && (
           <p class="muted small-note">
-            Pick a backing track recorded to a steady tempo. You'll enter its BPM, then tap along once to line up the bars. It's saved for next time.
+            Pick a backing track recorded to a steady tempo. Press Detect tempo while it plays, or type the BPM and tap the 1. It's saved for next time.
           </p>
         )}
       </section>
@@ -327,6 +421,7 @@ export function YouTubeMode({ top }: { top?: ComponentChildren }) {
             startLabel="Start practice"
             stopLabel="Stop"
             status={practicing ? undefined : grid.aligned ? 'Lined up' : 'Not lined up yet'}
+            disabled={listenPhase !== 'idle'}
             onToggle={practicing ? stopPractice : startPractice}
           />
           {message && <p class="status-note">{message}</p>}
@@ -343,7 +438,13 @@ export function YouTubeMode({ top }: { top?: ComponentChildren }) {
             tapResult={tapResult}
             tapHint={tapHint}
             clickOn={yt.clickOn}
+            listenWithMic={listenWithMic}
+            listenPhase={listenPhase}
+            heardSeconds={heardSeconds}
+            listenSeconds={LISTEN_SECONDS}
+            listenMessage={listenMessage}
             onTempo={onTempo}
+            onScale={onScale}
             onTap={onTap}
             onResetTaps={() => {
               setTaps([]);
@@ -351,6 +452,8 @@ export function YouTubeMode({ top }: { top?: ComponentChildren }) {
             }}
             onNudge={onNudge}
             onClick={onClick}
+            onDetect={() => void detect()}
+            onStopListen={stopListen}
           />
 
           <section class="card">

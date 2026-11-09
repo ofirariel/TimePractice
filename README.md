@@ -34,11 +34,13 @@ Your settings are remembered in the browser.
 
 ## Playing along with a YouTube track
 
-1. At the top, choose **YouTube track**. Paste a link from YouTube's *Share* button and press **Load**. The video appears small on the page.
-2. Enter the track's **tempo** (BPM) and **time signature**.
-3. Play the video and press **Tap on the 1** on every downbeat for a few bars. This lines the bars up with the music.
-4. To check, turn on **Play a click with the video**. If the click sounds slightly before or after the music, use **10 ms earlier / later**. If the "1" landed on the wrong beat, use **1 beat earlier / later**. If the click slowly drifts away over the song, the tempo is a little off: adjust it by 0.1.
-5. Press **Start practice**. The video goes quiet at random, using the same silence settings as the metronome. Press **Stop** to see where the silences fell.
+1. At the top, choose **YouTube**. Paste a link from YouTube's *Share* button and press **Load**. The video appears small on the page.
+2. Set the **time signature**, press play, then press **Detect tempo**.
+   - On a Mac, Chrome asks to share this tab. Choose this tab and turn on **Share tab audio**. It listens for about 12 seconds.
+   - On an Android phone, the microphone listens to the speaker. Turn the volume up and let the phone hear the track.
+3. If the tempo comes out half or double, tap **÷2 slower** or **×2 faster**. If the "1" is on the wrong beat, tap **1 beat earlier / later**. You can still type the tempo, or tap **Tap on the 1** on every downbeat, if you'd rather line it up by hand.
+4. To check, turn on **Play a click with the video**. If the click sounds slightly before or after the music, use **10 ms earlier / later**. If the click slowly drifts away over the song, the tempo is a little off: adjust it by 0.1.
+5. Press **Start practice**. The video goes quiet on the beat, using the same silence settings as the metronome, lined up with the tempo just found. Press **Stop** to see where the silences fell.
 
 The tempo and alignment are saved for each video, so next time just load it and press Start practice. Recently used videos appear under the link box.
 
@@ -66,7 +68,7 @@ npm test         # unit tests
 npm run build    # type-check and build into dist/
 ```
 
-- `src/core/` – pure logic with no audio or UI: seeded random numbers, the random silence schedule, bar/beat ↔ seconds maths, YouTube link parsing, tap-along alignment, and the smoothed video clock (`video-clock.ts`). Fully unit-tested in `tests/`.
+- `src/core/` – pure logic with no audio or UI: seeded random numbers, the random silence schedule, bar/beat ↔ seconds maths, YouTube link parsing, tap-along alignment, beat detection, and the smoothed video clock (`video-clock.ts`). Fully unit-tested in `tests/`.
 - `src/sources/youtube-*.ts` – the official YouTube IFrame Player API (loaded from YouTube, not bundled) and the engine that mutes the player during silences and plays the optional click in time with the video.
 - `src/sources/` – Web Audio engine. A lookahead scheduler books clicks and mutes slightly ahead on the audio clock. Every source plays through one master gain (`mute-gate.ts`), and each mute is a 5 ms fade that finishes exactly on the beat.
 - `src/ui/` – Preact screens. `src/state/settings.ts` – settings saved in `localStorage`.
