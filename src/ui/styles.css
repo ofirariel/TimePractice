@@ -319,6 +319,33 @@ select,
   box-shadow: inset 0 0 0 1px var(--accent);
 }
 
+.mode-switch {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding-bottom: 12px;
+}
+
+.mode-switch .segmented {
+  display: flex;
+}
+
+.mode-switch .segmented button {
+  flex: 1;
+  min-height: 48px;
+  font-size: 1.05rem;
+}
+
+.mode-switch small,
+.pattern-note {
+  color: var(--muted);
+  font-size: 0.85rem;
+}
+
+.pattern-note {
+  margin: 0 0 12px;
+}
+
 .range-field {
   display: flex;
   flex-direction: column;

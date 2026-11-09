@@ -1,5 +1,6 @@
 import { beatToTime, timeToBeats, timeToPosition, type Grid, type Position } from '../core/grid';
-import { generateRandomSchedule, type RandomScheduleOptions, type Silence } from '../core/schedule-random';
+import { generateSchedule, scheduleSeed, type ScheduleOptions } from '../core/schedule';
+import type { Silence } from '../core/schedule-random';
 import { nextBoundary, shiftSilences, silenceAt } from '../core/silence-lookup';
 import { clipSilences } from '../core/silence-cursor';
 import { VideoClock } from '../core/video-clock';
@@ -27,7 +28,7 @@ export interface ClickOverlay {
 }
 
 interface Practice {
-  options: RandomScheduleOptions | null;
+  options: ScheduleOptions | null;
   /** First beat of practice (a bar line), or null until the video starts playing. */
   anchorBeat: number | null;
   silences: Silence[];
@@ -122,7 +123,7 @@ export class YouTubeEngine {
   }
 
   /** Starts practice. Silences begin from the next bar line once the video is playing. */
-  startPractice(options: RandomScheduleOptions | null): void {
+  startPractice(options: ScheduleOptions | null): void {
     this.practice = { options, anchorBeat: null, silences: [], heard: new Set(), maxBeat: -1, playedSeconds: 0 };
     if (this.player.getPlayerState() !== PlayerState.PLAYING) this.player.playVideo();
     this.tick();
@@ -140,7 +141,7 @@ export class YouTubeEngine {
       bpm: this.grid.bpm,
       beatsPerBar: this.grid.beatsPerBar,
       unit: p.options?.unit ?? null,
-      seed: p.options ? String(p.options.seed) : null,
+      seed: scheduleSeed(p.options),
       durationSeconds: p.playedSeconds,
       totalBeats,
       startBeat: p.anchorBeat,
@@ -195,7 +196,7 @@ export class YouTubeEngine {
     if (!p.options) return;
     const duration = this.player.getDuration() || FALLBACK_DURATION_SECONDS;
     const until = Math.ceil(timeToBeats(this.grid, duration)) - anchorBeat + bpb;
-    p.silences = shiftSilences(generateRandomSchedule(p.options, Math.max(0, until)), anchorBeat);
+    p.silences = shiftSilences(generateSchedule(p.options, Math.max(0, until)), anchorBeat);
   }
 
   /** Beat position the mute state should follow: slightly ahead of what's playing. */

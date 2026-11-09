@@ -67,6 +67,7 @@ describe('settings', () => {
       ...DEFAULT_SETTINGS,
       silence: {
         ...DEFAULT_SETTINGS.silence,
+        mode: 'random',
         unit: 'seconds',
         seconds: { length: { min: 3, max: 9 }, lengthRanged: false, gap: { min: 5, max: 10 }, gapRanged: true, grace: 6 },
         chance: 50,
@@ -74,6 +75,7 @@ describe('settings', () => {
     });
     const o = toScheduleOptions(s, 'abc');
     expect(o).toMatchObject({
+      mode: 'random',
       unit: 'seconds',
       length: { min: 3, max: 3 },
       gap: { min: 5, max: 10 },
@@ -81,5 +83,29 @@ describe('settings', () => {
       chance: 0.5,
       seed: 'abc',
     });
+  });
+
+  it('defaults to fixed silences: 2 of every 4 bars', () => {
+    const s = sanitizeSettings({});
+    expect(s.silence.mode).toBe('fixed');
+    expect(s.silence.bars.fixed).toEqual({ silence: 2, every: 4 });
+    expect(toScheduleOptions(s, 'x')).toEqual({
+      mode: 'fixed', unit: 'bars', silence: 2, every: 4, grace: 4, bpm: 100, beatsPerBar: 4,
+    });
+  });
+
+  it('keeps a saved mode and fixed values, and always leaves some sound in each cycle', () => {
+    const s = sanitizeSettings({
+      silence: { mode: 'random', bars: { fixed: { silence: 3, every: 2 } }, seconds: { fixed: { silence: 120, every: 1 } } },
+    });
+    expect(s.silence.mode).toBe('random');
+    expect(s.silence.bars.fixed).toEqual({ silence: 3, every: 4 });
+    expect(s.silence.seconds.fixed).toEqual({ silence: 119.5, every: 120 });
+    expect(sanitizeSettings({ silence: { mode: 'sometimes' } }).silence.mode).toBe('fixed');
+  });
+
+  it('gives no schedule when silences are off', () => {
+    const s = sanitizeSettings({ silence: { mode: 'off' } });
+    expect(toScheduleOptions(s, 'x')).toBeNull();
   });
 });
