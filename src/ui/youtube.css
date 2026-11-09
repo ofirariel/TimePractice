@@ -1,0 +1,146 @@
+.source-picker .segmented {
+  display: flex;
+  width: 100%;
+}
+
+.source-picker .segmented button {
+  flex: 1;
+  min-height: 46px;
+  font-size: 1rem;
+}
+
+.url-row {
+  display: flex;
+  gap: 8px;
+}
+
+.url-row .text-input {
+  flex: 1;
+  min-width: 0;
+}
+
+.load-button {
+  min-height: 48px;
+  padding: 0 18px;
+  border: 0;
+  border-radius: 10px;
+  background: var(--accent);
+  color: var(--accent-ink);
+  font-weight: 700;
+}
+
+/* YouTube's terms require the player to stay visible and at least 200x200 px. */
+.yt-player {
+  width: 100%;
+  min-width: 200px;
+  min-height: 200px;
+  aspect-ratio: 16 / 9;
+  margin-top: 12px;
+  border-radius: 10px;
+  overflow: hidden;
+  background: #000;
+}
+
+.yt-player iframe {
+  display: block;
+  width: 100%;
+  height: 100%;
+  border: 0;
+}
+
+.video-title {
+  margin: 8px 0 0;
+  font-size: 0.95rem;
+}
+
+.recent {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+  margin-top: 12px;
+  font-size: 0.85rem;
+}
+
+.chip {
+  max-width: 100%;
+  min-height: 36px;
+  padding: 0 12px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  border: 1px solid var(--line);
+  border-radius: 18px;
+  background: var(--card-2);
+  font-size: 0.85rem;
+}
+
+.small-note {
+  margin: 10px 0 0;
+  font-size: 0.85rem;
+}
+
+.status-note {
+  margin: -4px 4px 0;
+  padding: 10px 12px;
+  border-radius: 10px;
+  border: 1px solid var(--line);
+  background: var(--card-2);
+  font-size: 0.9rem;
+}
+
+.tap-area {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  padding: 16px 0 12px;
+  border-top: 1px solid var(--line);
+}
+
+.tap-button {
+  width: 100%;
+  min-height: 110px;
+  border: 2px solid var(--accent);
+  border-radius: 16px;
+  background: var(--card-2);
+  font-size: 1.5rem;
+  font-weight: 700;
+  touch-action: manipulation;
+  user-select: none;
+  -webkit-user-select: none;
+}
+
+.tap-button:active {
+  background: var(--accent);
+  color: var(--accent-ink);
+}
+
+.tap-message {
+  margin: 0;
+  text-align: center;
+  color: var(--muted);
+  font-size: 0.9rem;
+}
+
+.nudge-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+  width: 100%;
+}
+
+.nudge-grid button {
+  min-height: 48px;
+  padding: 0 8px;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: var(--card-2);
+  font-size: 0.95rem;
+}
+
+@media (min-width: 600px) {
+  .nudge-grid {
+    max-width: 320px;
+  }
+}

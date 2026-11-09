@@ -15,11 +15,15 @@ function tickEvery(totalBars: number): number {
 
 export function SessionTimeline({ summary, seedInUse, onReuseSeed }: Props) {
   const { totalBeats, beatsPerBar, bpm, silences } = summary;
+  const startBeat = summary.startBeat ?? 0;
+  const offset = summary.offsetSeconds ?? 0;
+  const firstBar = Math.floor(startBeat / beatsPerBar);
+  const spanBeats = Math.max(0, totalBeats - startBeat);
   const beatSec = 60 / bpm;
-  const totalBars = Math.ceil(totalBeats / beatsPerBar);
+  const totalBars = Math.ceil(spanBeats / beatsPerBar);
   const every = tickEvery(totalBars);
   const silentBeats = silences.reduce((sum, s) => sum + s.endBeat - s.startBeat, 0);
-  const pct = (beat: number) => `${(100 * beat) / Math.max(1, totalBeats)}%`;
+  const pct = (beats: number) => `${(100 * beats) / Math.max(1, spanBeats)}%`;
 
   return (
     <section class="card">
@@ -30,23 +34,23 @@ export function SessionTimeline({ summary, seedInUse, onReuseSeed }: Props) {
         {silentBeats > 0 && ` · ${formatClock(silentBeats * beatSec)} silent`}
       </p>
 
-      {totalBeats > 0 && (
+      {spanBeats > 0 && (
         <div class="timeline" role="img" aria-label="Where the silences fell">
           {Array.from({ length: Math.floor(totalBars / every) + 1 }, (_, i) => i * every)
-            .filter((bar) => bar * beatsPerBar <= totalBeats)
+            .filter((bar) => bar * beatsPerBar <= spanBeats)
             .map((bar) => (
               <span class="tick" style={{ left: pct(bar * beatsPerBar) }}>
-                <span class="tick-label">{bar + 1}</span>
+                <span class="tick-label">{firstBar + bar + 1}</span>
               </span>
             ))}
           {silences.map((s) => (
-            <span class="block" style={{ left: pct(s.startBeat), width: pct(s.endBeat - s.startBeat) }} />
+            <span class="block" style={{ left: pct(s.startBeat - startBeat), width: pct(s.endBeat - s.startBeat) }} />
           ))}
         </div>
       )}
       <div class="timeline-legend">
         <span>
-          <i class="swatch sound" /> click
+          <i class="swatch sound" /> sound
         </span>
         <span>
           <i class="swatch silent" /> silence
@@ -60,7 +64,7 @@ export function SessionTimeline({ summary, seedInUse, onReuseSeed }: Props) {
             <li>
               <span>{describeSilence(s, beatsPerBar)}</span>
               <span class="muted">
-                at {formatClock(s.startBeat * beatSec)} · {((s.endBeat - s.startBeat) * beatSec).toFixed(1)} s
+                at {formatClock(offset + s.startBeat * beatSec)} · {((s.endBeat - s.startBeat) * beatSec).toFixed(1)} s
               </span>
             </li>
           ))}

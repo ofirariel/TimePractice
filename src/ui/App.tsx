@@ -1,3 +1,4 @@
+import type { ComponentChildren } from 'preact';
 import { useEffect, useRef, useState } from 'preact/hooks';
 import type { Position } from '../core/grid';
 import { makeSeed } from '../core/rng';
@@ -12,7 +13,7 @@ import { SessionTimeline } from './SessionTimeline';
 import { SilenceSettings } from './SilenceSettings';
 
 /** Keeps the phone screen on while practising, where the browser supports it. */
-function useWakeLock(active: boolean) {
+export function useWakeLock(active: boolean) {
   useEffect(() => {
     if (!active || !('wakeLock' in navigator)) return;
     let lock: WakeLockSentinel | null = null;
@@ -34,7 +35,7 @@ function useWakeLock(active: boolean) {
   }, [active]);
 }
 
-export function App() {
+export function App({ top }: { top?: ComponentChildren }) {
   const [settings, setSettings] = useState<Settings>(loadSettings);
   const [running, setRunning] = useState(false);
   const [position, setPosition] = useState<Position | null>(null);
@@ -111,6 +112,7 @@ export function App() {
         <h1>TimePractice</h1>
         <p>Keep playing through the silences. When the click comes back, are you still with it?</p>
       </header>
+      {top}
 
       <PlayPanel
         running={running}

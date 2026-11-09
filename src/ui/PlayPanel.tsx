@@ -10,10 +10,19 @@ interface Props {
   bpm: number;
   silencesOn: boolean;
   onToggle: () => void;
+  /** Show the bar/beat even when not running (e.g. while a video plays during alignment). */
+  alwaysShowPosition?: boolean;
+  startLabel?: string;
+  stopLabel?: string;
+  /** Replaces the right-hand status text. */
+  status?: string;
+  disabled?: boolean;
 }
 
-export function PlayPanel({ running, position, elapsed, beatsPerBar, beatUnit, bpm, silencesOn, onToggle }: Props) {
-  const showing = running && position;
+export function PlayPanel(props: Props) {
+  const { running, position, elapsed, beatsPerBar, beatUnit, bpm, silencesOn, onToggle } = props;
+  const showing = (running || props.alwaysShowPosition) && position;
+  const status = props.status ?? (running ? formatClock(elapsed) : silencesOn ? 'Random silences on' : 'Silences off');
   return (
     <section class="card play">
       <div class="counter" aria-live="off">
@@ -35,10 +44,10 @@ export function PlayPanel({ running, position, elapsed, beatsPerBar, beatUnit, b
         <span>
           {bpm} BPM · {beatsPerBar}/{beatUnit}
         </span>
-        <span>{running ? formatClock(elapsed) : silencesOn ? 'Random silences on' : 'Silences off'}</span>
+        <span>{status}</span>
       </div>
-      <button type="button" class={`play-button${running ? ' stop' : ''}`} onClick={onToggle}>
-        {running ? 'Stop' : 'Start'}
+      <button type="button" class={`play-button${running ? ' stop' : ''}`} disabled={props.disabled} onClick={onToggle}>
+        {running ? (props.stopLabel ?? 'Stop') : (props.startLabel ?? 'Start')}
       </button>
     </section>
   );
