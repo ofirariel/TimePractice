@@ -216,7 +216,10 @@ class FakeAudioContext {
     this.frozenAt = this.currentTime;
     this.state = 'suspended';
   }
+  /** When set, resume() leaves the context suspended so a test can hold that state. */
+  holdResume = false;
   resume() {
+    if (this.holdResume) return;
     this.startedAt = performance.now() / 1000 - this.frozenAt;
     this.state = 'running';
   }
@@ -293,9 +296,11 @@ describe('YouTube click overlay', () => {
   it('books nothing while audio is suspended, then clicks normally once resumed', () => {
     const ctx = new FakeAudioContext();
     ctx.suspend();
+    ctx.holdResume = true;
     const { engine } = setup(ctx);
     run(3000);
     expect(ctx.booked).toEqual([]);
+    ctx.holdResume = false;
     ctx.resume();
     run(10_000);
     expect(ctx.booked.length).toBeGreaterThan(15);

@@ -4,7 +4,7 @@ import type { Position } from '../core/grid';
 import { makeSeed } from '../core/rng';
 import { nudgeOffset, offsetFromTaps, type TapResult } from '../core/tap-align';
 import { parseVideoId } from '../core/youtube-url';
-import { getAudioContext, unlockAudio } from '../sources/audio-context';
+import { getAudioContext, installAudioResume, unlockAudio } from '../sources/audio-context';
 import type { SessionSummary } from '../sources/session';
 import { createPlayer, describePlayerError, type YTPlayer } from '../sources/youtube-player';
 import { wallNow, YouTubeEngine, type VideoStatus } from '../sources/youtube-session';
@@ -153,15 +153,7 @@ export function YouTubeMode({ top }: { top?: ComponentChildren }) {
   }, [ready, yt.clickOn, settings.sound, settings.beatLevels, settings.volume]);
 
   // Safari can suspend audio at any time; any tap on the page lets it resume.
-  useEffect(() => {
-    if (!yt.clickOn) return;
-    const resume = () => void unlockAudio().catch(() => {});
-    const events = ['pointerdown', 'touchend', 'keydown'] as const;
-    for (const e of events) document.addEventListener(e, resume, true);
-    return () => {
-      for (const e of events) document.removeEventListener(e, resume, true);
-    };
-  }, [yt.clickOn]);
+  useEffect(() => (yt.clickOn ? installAudioResume() : undefined), [yt.clickOn]);
 
   // Refresh the counter and status every frame.
   useEffect(() => {
