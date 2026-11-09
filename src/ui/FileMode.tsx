@@ -5,7 +5,7 @@ import { formatClock } from '../core/format';
 import type { Position } from '../core/grid';
 import { makeSeed } from '../core/rng';
 import { nudgeOffset } from '../core/tap-align';
-import { unlockAudio } from '../sources/audio-context';
+import { getAudioContext, installAudioResume, unlockAudio } from '../sources/audio-context';
 import { CLICK_SOUNDS, nextBeatLevel, type BeatLevel, type ClickSound } from '../sources/click-sounds';
 import { FileSession, MAX_FILE_SECONDS } from '../sources/file-session';
 import { previewClick } from '../sources/metronome';
@@ -67,6 +67,7 @@ export function FileMode({ top }: { top?: ComponentChildren }) {
 
   useEffect(() => saveSettings(settings), [settings]);
   useWakeLock(playing);
+  useEffect(() => (playing ? installAudioResume() : undefined), [playing]);
   useEffect(() => () => void session.current?.stop(), []);
 
   useEffect(() => {
@@ -173,14 +174,22 @@ export function FileMode({ top }: { top?: ComponentChildren }) {
 
   const preview = (sound: ClickSound, level: BeatLevel) => {
     if (playing || level === 'off') return;
-    unlockAudio().then((ctx) => previewClick(ctx, sound, level, settings.volume), () => {});
+    const ctx = getAudioContext();
+    void unlockAudio().catch(() => {});
+    previewClick(ctx, sound, level, settings.volume);
   };
 
-  const start = async () => {
+  const start = () => {
     if (!track || !grid) return;
     setError(null);
     try {
-      const ctx = await unlockAudio();
+      const ctx = getAudioContext();
+      void unlockAudio().catch((e) => {
+        session.current?.stop();
+        session.current = null;
+        setPlaying(false);
+        setError(`Couldn't play that file: ${e instanceof Error ? e.message : String(e)}`);
+      });
       const seed = settings.silence.seed.trim() || makeSeed();
       const base = toScheduleOptions(settings, seed);
       const schedule = base && { ...base, bpm: grid.bpm, beatsPerBar: grid.beatsPerBar };

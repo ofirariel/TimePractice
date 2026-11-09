@@ -4,7 +4,7 @@ import type { Silence } from '../core/schedule-random';
 import { nextBoundary, shiftSilences, silenceAt } from '../core/silence-lookup';
 import { clipSilences } from '../core/silence-cursor';
 import { VideoClock } from '../core/video-clock';
-import { outputDelay } from './audio-context';
+import { outputDelay, resumeAudio } from './audio-context';
 import type { BeatLevel, ClickSound } from './click-sounds';
 import { Metronome } from './metronome';
 import { startTicker, type Ticker } from './scheduler';
@@ -50,7 +50,7 @@ export function outputClock(ctx: AudioContext, at: number): (wall: number) => nu
   if (stamp?.performanceTime && stamp.contextTime !== undefined) {
     const heardNow = stamp.contextTime + (at - stamp.performanceTime / 1000);
     const delay = ctx.currentTime - heardNow;
-    if (delay >= 0 && delay <= MAX_OUTPUT_DELAY_SECONDS) return (wall) => heardNow + (wall - at);
+    if (Number.isFinite(heardNow) && delay >= 0 && delay <= MAX_OUTPUT_DELAY_SECONDS) return (wall) => heardNow + (wall - at);
   }
   const heardNow = ctx.currentTime - outputDelay(ctx);
   return (wall) => heardNow + (wall - at);
@@ -268,6 +268,7 @@ export class YouTubeEngine {
     const { ctx, beatLevels } = c.overlay;
     // A suspended context's clock is frozen: clicks booked now would all burst out together once it resumes.
     if (t === null || ctx.state !== 'running') {
+      if (ctx.state !== 'running') resumeAudio(ctx);
       c.lastBeat = null;
       return;
     }

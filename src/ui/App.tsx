@@ -2,7 +2,7 @@ import type { ComponentChildren } from 'preact';
 import { useEffect, useRef, useState } from 'preact/hooks';
 import type { Position } from '../core/grid';
 import { makeSeed } from '../core/rng';
-import { unlockAudio } from '../sources/audio-context';
+import { getAudioContext, installAudioResume, unlockAudio } from '../sources/audio-context';
 import type { BeatLevel, ClickSound } from '../sources/click-sounds';
 import { previewClick } from '../sources/metronome';
 import { PracticeSession, type SessionSummary } from '../sources/session';
@@ -46,6 +46,7 @@ export function App({ top }: { top?: ComponentChildren }) {
 
   useEffect(() => saveSettings(settings), [settings]);
   useWakeLock(running);
+  useEffect(() => (running ? installAudioResume() : undefined), [running]);
 
   useEffect(() => {
     if (!running) return;
@@ -72,15 +73,24 @@ export function App({ top }: { top?: ComponentChildren }) {
     if (patch.beatLevels !== undefined) session.current?.setBeatLevels(patch.beatLevels);
   };
   const preview = (sound: ClickSound, level: BeatLevel) => {
-    if (running) return;
-    unlockAudio().then((ctx) => previewClick(ctx, sound, level, settings.volume), () => {});
+    if (running || level === 'off') return;
+    const ctx = getAudioContext();
+    // Start the buffer in this tap. Waiting on resume() runs the click after the gesture, which some browsers drop.
+    void unlockAudio().catch(() => {});
+    previewClick(ctx, sound, level, settings.volume);
   };
   const updateSilence = (patch: Partial<Settings['silence']>) => setSettings((s) => ({ ...s, silence: { ...s.silence, ...patch } }));
 
-  const start = async () => {
+  const start = () => {
     setError(null);
     try {
-      const ctx = await unlockAudio();
+      const ctx = getAudioContext();
+      void unlockAudio().catch((e) => {
+        session.current?.stop();
+        session.current = null;
+        setRunning(false);
+        setError(`Couldn't start the sound: ${e instanceof Error ? e.message : String(e)}`);
+      });
       const seed = settings.silence.seed.trim() || makeSeed();
       session.current = new PracticeSession(ctx, {
         bpm: settings.bpm,
@@ -95,6 +105,8 @@ export function App({ top }: { top?: ComponentChildren }) {
       setElapsed(0);
       setRunning(true);
     } catch (e) {
+      session.current = null;
+      setRunning(false);
       setError(`Couldn't start the sound: ${e instanceof Error ? e.message : String(e)}`);
     }
   };

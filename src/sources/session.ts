@@ -2,7 +2,7 @@ import { beatToTime, timeToBeats, timeToPosition, type Grid, type Position } fro
 import { createSchedule, scheduleSeed, type ScheduleOptions } from '../core/schedule';
 import type { Silence, SilenceUnit } from '../core/schedule-random';
 import { clipSilences, SilenceCursor } from '../core/silence-cursor';
-import { outputDelay } from './audio-context';
+import { outputDelay, resumeAudio } from './audio-context';
 import type { BeatLevel, ClickSound } from './click-sounds';
 import { Metronome } from './metronome';
 import { MuteGate } from './mute-gate';
@@ -10,6 +10,8 @@ import { LOOKAHEAD_SECONDS, startTicker, type Ticker } from './scheduler';
 
 /** Breathing room between pressing Start and the first click, so it's never cut short. */
 const START_DELAY_SECONDS = 0.2;
+/** A beat this late is still played (immediately) instead of dropped. Further behind, skip it. */
+const LATE_CLICK_SECONDS = 0.05;
 
 export interface SessionConfig {
   bpm: number;
@@ -56,21 +58,27 @@ export class PracticeSession {
     this.cursor = new SilenceCursor(config.schedule ? createSchedule(config.schedule) : null);
     this.grid = { bpm: config.bpm, beatsPerBar: config.beatsPerBar, offset: ctx.currentTime + START_DELAY_SECONDS };
     this.ticker = startTicker(() => this.tick());
-    this.tick();
+    // Book the opening clicks in this tap. The first beat sits past the normal lookahead,
+    // so waiting for the timer meant a timer that never started produced no click at all.
+    this.tick(this.ctx.currentTime + START_DELAY_SECONDS + LOOKAHEAD_SECONDS);
   }
 
   /** Books every click and mute that falls inside the lookahead window. */
-  private tick(): void {
-    const horizon = this.ctx.currentTime + LOOKAHEAD_SECONDS;
+  private tick(horizon = this.ctx.currentTime + LOOKAHEAD_SECONDS): void {
+    // A suspended clock does not move. Booking against it piles every click up for the moment it resumes.
+    if (this.ctx.state !== 'running') {
+      resumeAudio(this.ctx);
+      return;
+    }
     for (;;) {
       const time = beatToTime(this.grid, this.nextBeat);
       if (time >= horizon) return;
       const event = this.cursor.at(this.nextBeat);
       if (event === 'mute') this.gate.muteAt(time);
       else if (event === 'unmute') this.gate.unmuteAt(time);
-      // If the page stalled and this beat is already in the past, skip its click rather than play it late.
-      if (time >= this.ctx.currentTime) {
-        this.metronome.click(time, this.beatLevels[this.nextBeat % this.grid.beatsPerBar] ?? 'normal');
+      // A beat only a hair late still belongs on this beat. Dropping every late beat is how a slow timer goes silent.
+      if (time >= this.ctx.currentTime - LATE_CLICK_SECONDS) {
+        this.metronome.click(Math.max(time, this.ctx.currentTime), this.beatLevels[this.nextBeat % this.grid.beatsPerBar] ?? 'normal');
       }
       this.nextBeat++;
     }
