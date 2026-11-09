@@ -19,6 +19,15 @@ A free practice tool for keeping time. A metronome plays, then goes silent at ra
 3. Press **Start**. The big counter shows the bar and beat. Silences are not shown on screen – you only hear them.
 4. Press **Stop**. The **Last session** panel shows where the silences fell. To practise the same pattern again, press **Repeat this pattern**.
 
+### Audio file
+
+Choose **Audio file**, then pick an mp3, wav or m4a from your Mac or phone (or drop it onto the page). Tracks over 10 minutes are turned away. The app listens for the tempo and where bar 1 starts. Nothing about the file is saved: it stays in memory and is forgotten when you leave or load another one.
+
+- If the tempo is half or double what you expected, tap **÷2 slower** or **×2 faster**.
+- If the click's "1" is on the wrong beat, tap **1 beat earlier** or **1 beat later**.
+- You can also type the tempo yourself. Turn on **Click with the track** to hear whether the grid sits on the music.
+- Fixed, Random and Off silences all work, and they cut the track exactly on the beat.
+
 Your settings are remembered in the browser.
 
 **Tip:** use wired headphones or the built-in speakers. Bluetooth headphones add a delay, so the on-screen counter will look slightly ahead of what you hear (the silences themselves stay on the beat).
@@ -43,7 +52,7 @@ The tempo and alignment are saved for each video, so next time just load it and 
 1. Metronome with random and fixed silences (done)
 2. Custom silence regions ("mute bars 5–6 and 13–16"), muted light, reveal-the-schedule option
 3. YouTube backing tracks (done)
-4. Audio files from your device, with automatic beat alignment
+4. Audio files from your device, with automatic beat alignment (done)
 5. Install as an app, offline use, polish
 
 ## For developers

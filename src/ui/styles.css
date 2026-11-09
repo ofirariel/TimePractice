@@ -613,6 +613,70 @@ select,
   color: var(--accent);
 }
 
+.small-button.on {
+  background: var(--accent);
+  color: var(--accent-ink);
+}
+
+.dropzone {
+  margin-top: 4px;
+  border: 1.5px dashed var(--line);
+  border-radius: 12px;
+  padding: 22px 14px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  text-align: center;
+}
+
+.card.over,
+.dropzone.over {
+  border-color: var(--accent);
+  background: color-mix(in srgb, var(--accent) 12%, transparent);
+}
+
+.file-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 48px;
+  padding: 0 20px;
+  border-radius: 10px;
+  background: var(--accent);
+  color: var(--accent-ink);
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.file-button input {
+  display: none;
+}
+
+.track-name {
+  margin: 0;
+  font-weight: 600;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.pair-buttons {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  width: 100%;
+}
+
+.pair-buttons button {
+  flex: 1;
+  min-height: 44px;
+  padding: 0 10px;
+  border-radius: 10px;
+  border: 1px solid var(--line);
+  background: var(--card-2);
+}
+
 .app-footer {
   text-align: center;
   font-size: 0.85rem;

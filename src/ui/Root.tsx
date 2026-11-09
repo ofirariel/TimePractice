@@ -2,6 +2,7 @@ import { useState } from 'preact/hooks';
 import { loadSource, saveSource, type Source } from '../state/source';
 import { App } from './App';
 import { Segmented } from './controls';
+import { FileMode } from './FileMode';
 import { YouTubeMode } from './YouTubeMode';
 
 export function Root() {
@@ -17,11 +18,14 @@ export function Root() {
         value={source}
         options={[
           { value: 'metronome', label: 'Metronome' },
-          { value: 'youtube', label: 'YouTube track' },
+          { value: 'youtube', label: 'YouTube' },
+          { value: 'file', label: 'Audio file' },
         ]}
         onChange={choose}
       />
     </div>
   );
-  return source === 'youtube' ? <YouTubeMode top={picker} /> : <App top={picker} />;
+  if (source === 'youtube') return <YouTubeMode top={picker} />;
+  if (source === 'file') return <FileMode top={picker} />;
+  return <App top={picker} />;
 }
